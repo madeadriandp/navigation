@@ -19,10 +19,11 @@ class EditScreen extends StatelessWidget{
       ),
       body: Container(
         padding: EdgeInsets.all(10),
-        child: TextField(
+        child: TextFormField(
+          initialValue: todos.name,
           
-          onSubmitted: (val){
-            Todo toda = Todo(val, 'description');
+          onFieldSubmitted: (val){
+            Todo toda = Todo(val,todos.address, todos.favorite, todos.id, todos.imagepath);
             editTodo(toda, index);
             Navigator.pop(context);
           },

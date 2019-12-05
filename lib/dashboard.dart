@@ -1,45 +1,116 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:navigation/addtodo.dart';
+import 'package:navigation/addscreen_cam.dart';
 import 'package:navigation/editscreen.dart';
 import 'package:navigation/model/to_do.dart';
 
 import 'tododescription.dart';
 
 class TodoScreen extends StatefulWidget {
-  TodoState createState() => TodoState();
+  
+  @override
+  State<StatefulWidget> createState(){
+    return TodoState();
+  }
 }
 
+class _InputData{
+  String description = "";
+  int urutan;
+}
+
+_InputData data = _InputData();
+
 class TodoState extends State<TodoScreen> {
-  List<Todo> todos = List.generate(
-      15,
-      (i) => Todo('Todo ${i + 1}',
-          "A description of what needs to be done for Todo ${i + 1}"));
+  List<Todo> todos ;
+  bool loading = true;
+  bool checkall = false;
+  String filtered ="total";
 
-  handleTodo(todo) {
+  void getTodos() async{
+    var response =await Todo.getTodos();
     setState(() {
-      todos.add(Todo('$todo ${todos.length + 1}',
-          'A description of what needs to be done for $todo ${todos.length + 1}'));
+      todos=response;
+      loading=false;
     });
   }
 
-  editTodo(todu, index) {
-    setState(() {
-      todos[index].title = todu.title;
-          //'A description of what needs to be done for $todu ${todos.length + 1}');
+
+  @override
+  void initState(){
+    print('test');
+    super.initState();
+    getTodos();
+  }
+
+  Future<FormData> photo({path, name}) async {
+    return FormData.fromMap({
+      "name":name,
+      "favorite": false,
+      "photo": await MultipartFile.fromFile(path, filename:"user-photo")
+    
     });
   }
 
+  handleTodo(val, path) {
+    Todo.postTodos(photo(path: path,  name: val));
+    getTodos();
+  }
+  
+  //Edit the name of a Todos
+  editTodos(Todo todo, index) {
+    Todo.editTodo({"name": todo.name}, todo.id);
+    getTodos();  
+  }
+
+  removeWidget(Todo todo, index){
+    Todo.deleteTodo(todo.id);
+    // print(todo.id);
+    todos.removeAt(index);
+    // getTodos();
+  }
+
+  //Change the favorite status of a Todos
+  clickCheckBox(Todo todo, check, index){
+   Todo.editTodo({"favorite":check}, todo.id);
+   getTodos();
+  }
+
+  handleCheckAll(value){
+    for (var i = 0; i < todos.length; i++) {
+      Todo.editTodo({'favorite' : value}, todos[i].id);
+      todos[i].favorite = value;
+    }
+    setState(() {
+      checkall = value;
+    });
+  }
+  
+
+  handleDeleteAll(){
+    setState(() {
+      //int total = kerjaan.length;
+      for (int i = 0;i<todos.length;i++) {
+        if(todos[i].favorite=true){
+          Todo.deleteTodo(todos[i].id);
+          //getTodos();
+          i--;
+        }
+      }
+      checkall = false;
+    });
+  }
   int numberChecked(){
     int jum = 0;
     setState(() {
       for (var item in todos){
-        if(item.checkbox){
+        if(item.favorite){
           jum++;
         }
       }
       // for (int i=0; i<todos.length; i++){
-      //   if(todos[i].checkbox==true){
+      //   if(todos[i].favorite==true){
       //     jum++;
       //   }
       // }
@@ -47,24 +118,24 @@ class TodoState extends State<TodoScreen> {
     return jum;
   }
 
-  
 
-  bool checkall = false;
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
+    // 
     return Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.teal,
+          backgroundColor: Colors.yellowAccent[900],
           title: Text('To dos'),
         ),
-        body: 
-            Column(children: <Widget>[
+        body: loading
+        ? Text('loading')
+            :Column(children: <Widget>[
             Container(
               height: 120,
               width: MediaQuery.of(context).size.width,
-              child: (
-                  Row(
+              child: (loading
+              ? CircularProgressIndicator()
+              : Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
@@ -89,45 +160,10 @@ class TodoState extends State<TodoScreen> {
                         color: Colors.blueGrey,
                         number: todos.length,
                         icon: Icon(Icons.assessment)
-
                       ),
-                      // Card(
-                      //   child: Column(
-                      //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      //     crossAxisAlignment: CrossAxisAlignment.center,
-                      //     children: <Widget>[
-                      //       Text("Done", style: TextStyle(fontSize: 40)),
-                      //       Icon(Icons.check, size:37),
-                      //       Text("12")
-                      //     ],
-                      //   ),
-                      // ),
-                      // Card(
-                      //   child: Column(
-                      //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      //     crossAxisAlignment: CrossAxisAlignment.center,
-                      //     children: <Widget>[
-                      //       Text("Todo", style: TextStyle(fontSize: 40)),
-                      //       Icon(Icons.airline_seat_recline_normal, size:37),
-                      //       Text("80")
-                      //     ],
-                      //   ),
-                      // ),
-                      // Card(
-                      //   child: Column(
-                      //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      //     crossAxisAlignment: CrossAxisAlignment.center,
-                      //     children: <Widget>[
-                      //       Text("Total", style: TextStyle(fontSize: 40)),
-                      //       Icon(Icons.assessment, size:37),
-                      //       Text("12")
-                      //     ],
-                      //   ),
-                      // ),
+                      
                     ],
                   ))
-              
-              
               ),
          
           Container(
@@ -148,12 +184,7 @@ class TodoState extends State<TodoScreen> {
                     Checkbox(
                       value:checkall,
                       onChanged: (val){
-                       setState(() {
-                         for(var item in todos){
-                           item.checkbox = val;
-                         }
-                         checkall=val;
-                       }); 
+                       handleCheckAll(val); 
                       }
                     ),
 
@@ -174,20 +205,9 @@ class TodoState extends State<TodoScreen> {
                         color: Colors.transparent,
                         icon: Icon(Icons.delete_outline),
                         onPressed: (){
-                          setState(() {
-                            checkall=false;
-                            for(int i=0;i<todos.length;i++){
-                              if(todos[i].checkbox){
-                                todos.removeAt(i);
-                                i--;
-                              }
-                              else{}
-                            }
-                          });
+                          handleDeleteAll();
                         },
                       )
-                      
-                      
               ],
             ),
           ),
@@ -195,9 +215,9 @@ class TodoState extends State<TodoScreen> {
 
 
 
-          Container(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height*0.57,
+          Expanded(
+            // width: MediaQuery.of(context).size.width,
+            // height: MediaQuery.of(context).size.height*0.57,
             child: (
             ListView.builder(
             itemCount: todos.length,
@@ -205,42 +225,42 @@ class TodoState extends State<TodoScreen> {
               return Dismissible(
                   key: UniqueKey(),
                   onDismissed: (direction) {
-                    setState(() {
-                      todos.removeAt(index);
-                    });
+                    removeWidget(todos[index], index);
+              
 
                     //Show a snackbar
                     Scaffold.of(context).showSnackBar(
-                        SnackBar(content: Text("${todos[index].title} deleted"), backgroundColor: Colors.red,));
+                        SnackBar(content: Text("${todos[index].name} deleted"), backgroundColor: Colors.red,));
                   },
 
                   //show a red background as the item is swiped away
                   background: Container(color: Colors.red),
                   child: Card(
                     child: ListTile(
-                      leading: Checkbox(
-                        value: todos[index].checkbox,
-                        onChanged: (bool newValue) {
-                          setState(() {
-                            todos[index].checkbox = newValue;
-                            if(newValue==false){
-                              checkall = false;
+                      leading: todos[index].imagepath == null
+                      ? Icon(Icons.casino)
+                      : CircleAvatar(child: Image.network(todos[index].imagepath), backgroundColor: Colors.transparent,),
+                      trailing: Checkbox(
+                        value: todos[index].favorite,
+                        onChanged: (favorite) {
+                          clickCheckBox(todos[index], favorite, index);
+                          if(favorite ==false){
+                            checkall=false;
+                          }
+                          int temp=0;
+                          for(var i=0; i<todos.length; i++){
+                            if(todos[i].favorite==true){
+                              temp++;
                             }
-                            int penampung=0;
-                            for (var i = 0; i < todos.length; i++) {
-                              if(todos[i].checkbox==true){
-                                penampung++;
-                              }
-                            }
-                            if (penampung==todos.length){
-                              checkall=true;
-                            }
-                          });
+                          }
+                          if(temp == todos.length){
+                            checkall=true;
+                          }
                         },
                       ),
                       title: 
-                      Text('${todos[index].title} [${index+1}]', 
-                      style: todos[index].checkbox
+                      Text(todos[index].name, 
+                      style: todos[index].favorite
                       ? TextStyle(decoration: TextDecoration.lineThrough,color: Colors.blue[900])
                       : TextStyle(decoration: TextDecoration.none,color: Colors.black)
                       ),
@@ -250,7 +270,8 @@ class TodoState extends State<TodoScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  DetailScreen(todo: todos[index]),
+                                  DetailScreen(
+                                    todo: todos[index]),
                             ));
                       },
 
@@ -262,7 +283,7 @@ class TodoState extends State<TodoScreen> {
                              EditScreen(
                                todos:todos[index],
                                index: index,
-                               editTodo: editTodo,
+                               editTodo: editTodos,
                              )
                           ),);
                       } ,
@@ -282,7 +303,7 @@ class TodoState extends State<TodoScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AddScreen(handleTodo),
+                  builder: (context) => AddScreenCam(handleTodo),
                 ),
               );
             },
@@ -303,7 +324,6 @@ const Box({Key key, @required this.name, @required this. icon,
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Container(
       width: 120,
       height: MediaQuery.of(context).size.height*2/10,

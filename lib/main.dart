@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:navigation/dashboard.dart';
-import 'package:navigation/login.dart';
-import 'package:validate/validate.dart';
+
+import 'package:navigation/router.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return MaterialApp(
       title: 'Forms in Flutter',
       initialRoute: '/dashboard',
-      routes: {  
-        "/":(context) => LoginPage(),
-        "/dashboard": (context) => TodoScreen(),
-      },
+      onGenerateRoute: Router().getRoute,
     );
   }
 
